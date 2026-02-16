@@ -37,8 +37,8 @@ export class Doctor {
   @Column({ nullable: true, type: 'decimal', precision: 10, scale: 2 })
   consultationFee: number;
 
-  @Column({ nullable: true, type: 'jsonb' })
-  availability: any; // Store availability slots as JSON
+  @Column({ nullable: true, type: 'json' })
+  availability: any; // تخزين مواعيد التوافر بصيغة JSON
 
   @Column({ nullable: true, type: 'decimal', precision: 2, scale: 1, default: 0 })
   rating: number;

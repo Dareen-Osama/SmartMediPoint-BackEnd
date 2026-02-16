@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -8,6 +8,7 @@ import { Doctor } from '../../entities/doctor.entity';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { DoctorAvailabilityDto } from './dto/doctor-availability.dto';
+import { RegisterDto } from '../auth/dto/register.dto';
 import { UserRole } from '../../shared/common/enums';
 
 @Injectable()
@@ -74,14 +75,6 @@ export class UserService {
     return this.mapToUserResponse(doctor);
   }
 
-  async create(data: Partial<User>): Promise<User> {
-    const patients = await this.userRepository.find({
-      where: { role: UserRole.PATIENT },
-      relations: ['patient'],
-    });
-    return patients.map(p => this.mapToUserResponse(p));
-  }
-
   async getPatientById(patientId: string): Promise<UserResponseDto> {
     const patient = await this.userRepository.findOne({
       where: { id: patientId, role: UserRole.PATIENT },
@@ -133,7 +126,6 @@ export class UserService {
         '(doctor.firstName LIKE :search OR doctor.lastName LIKE :search OR doctor.specialization LIKE :search)',
         { search: `%${searchTerm}%` }
       )
-      
       .getMany();
 
     return doctors.map(d => this.mapToUserResponse(d));
@@ -152,24 +144,38 @@ export class UserService {
     return this.mapToUserResponse(user);
   }
 
-  // 🔹 دالة لإنشاء مستخدم (مع تشفير الباسورد)
+  // 🔹 إنشاء مستخدم عام (مع تشفير الباسورد)
   async create(data: Partial<User>): Promise<User> {
     if (data.password) {
       const salt = await bcrypt.genSalt();
       data.password = await bcrypt.hash(data.password, salt);
     }
-  
-    // create user instance
-    const user = this.userRepository.create(data);
-  
-    // save user to DB
-    const savedUser = await this.userRepository.save(user);
-  
-    return savedUser;
-  }
-  
 
-  // 🔹 دوال مساعدة
+    const user = this.userRepository.create(data);
+    return await this.userRepository.save(user);
+  }
+
+  // 🔹 إنشاء مستخدم عبر التسجيل (RegisterDto)
+  async register(registerDto: RegisterDto): Promise<User> {
+    const { email, password, firstName, lastName, role, phoneNumber } = registerDto;
+
+    const existingUser = await this.userRepository.findOne({ where: { email } });
+    if (existingUser) throw new ConflictException('User with this email already exists');
+
+    const user = this.userRepository.create({ email, password, role });
+    await this.userRepository.save(user);
+
+    if (role === UserRole.PATIENT) {
+      const patient = this.patientRepository.create({ firstName, lastName, phoneNumber, user });
+      await this.patientRepository.save(patient);
+    } else if (role === UserRole.DOCTOR) {
+      const doctor = this.doctorRepository.create({ firstName, lastName, phoneNumber, user });
+      await this.doctorRepository.save(doctor);
+    }
+
+    return user;
+  }
+
   async findByEmail(email: string): Promise<User | null> {
     return this.userRepository.findOne({
       where: { email },
@@ -184,6 +190,13 @@ export class UserService {
     });
   }
 
+  async updateRefreshToken(userId: string, refreshToken: string | null): Promise<void> {
+    // Simple implementation - you can store refresh tokens in a separate table if needed
+    await this.userRepository.update(userId, {
+      // Add refreshToken field to User entity if you want to store it
+    });
+  }
+
   private mapToUserResponse(user: User): UserResponseDto {
     const response: UserResponseDto = {
       id: user.id,
@@ -194,13 +207,8 @@ export class UserService {
       createdAt: user.createdAt,
     };
 
-    if (user.role === UserRole.PATIENT && user.patient) {
-      response.patient = { ...user.patient };
-    }
-
-    if (user.role === UserRole.DOCTOR && user.doctor) {
-      response.doctor = { ...user.doctor };
-    }
+    if (user.role === UserRole.PATIENT && user.patient) response.patient = { ...user.patient };
+    if (user.role === UserRole.DOCTOR && user.doctor) response.doctor = { ...user.doctor };
 
     return response;
   }
