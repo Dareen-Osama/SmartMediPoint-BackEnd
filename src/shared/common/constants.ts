@@ -1,0 +1,26 @@
+export const Constants = {
+  JWT: {
+    SECRET: 'JWT_SECRET',
+    EXPIRATION: 'JWT_EXPIRATION',
+  },
+  DATABASE: {
+    HOST: 'DB_HOST',
+    PORT: 'DB_PORT',
+    USERNAME: 'DB_USERNAME',
+    PASSWORD: 'DB_PASSWORD',
+    NAME: 'DB_DATABASE',
+  },
+  REDIS: {
+    HOST: 'REDIS_HOST',
+    PORT: 'REDIS_PORT',
+    PASSWORD: 'REDIS_PASSWORD',
+  },
+  UPLOAD: {
+    MAX_FILE_SIZE: 'MAX_FILE_SIZE',
+    UPLOAD_PATH: 'UPLOAD_PATH',
+  },
+  RATE_LIMIT: {
+    TTL: 'THROTTLE_TTL',
+    LIMIT: 'THROTTLE_LIMIT',
+  },
+} as const;
