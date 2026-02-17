@@ -38,7 +38,9 @@ export class AuthService {
       role: user.role,
     };
 
-    let firstName = '', lastName = '';
+    let firstName = '',
+      lastName = '';
+
     if (user.patient) {
       firstName = user.patient.firstName;
       lastName = user.patient.lastName;

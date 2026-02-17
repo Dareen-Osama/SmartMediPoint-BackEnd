@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -34,8 +38,10 @@ export class UserService {
     return this.mapToUserResponse(user);
   }
 
-  // 🔹 تحديث بروفايل
-  async updateProfile(userId: string, updateProfileDto: UpdateProfileDto): Promise<UserResponseDto> {
+  async updateProfile(
+    userId: string,
+    updateProfileDto: UpdateProfileDto,
+  ): Promise<UserResponseDto> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
       relations: ['patient', 'doctor'],
@@ -44,9 +50,13 @@ export class UserService {
     if (!user) throw new NotFoundException('User not found');
 
     if (user.role === UserRole.PATIENT && user.patient) {
-      await this.patientRepository.update(user.patient.id, { ...updateProfileDto });
+      await this.patientRepository.update(user.patient.id, {
+        ...updateProfileDto,
+      });
     } else if (user.role === UserRole.DOCTOR && user.doctor) {
-      await this.doctorRepository.update(user.doctor.id, { ...updateProfileDto });
+      await this.doctorRepository.update(user.doctor.id, {
+        ...updateProfileDto,
+      });
     }
 
     const updatedUser = await this.userRepository.findOne({
@@ -63,7 +73,7 @@ export class UserService {
       where: { role: UserRole.DOCTOR, isActive: true },
       relations: ['doctor'],
     });
-    return doctors.map(d => this.mapToUserResponse(d));
+    return doctors.map((d) => this.mapToUserResponse(d));
   }
 
   async getDoctorById(doctorId: string): Promise<UserResponseDto> {
@@ -85,7 +95,10 @@ export class UserService {
   }
 
   // 🔹 إدارة توافر الطبيب
-  async updateDoctorAvailability(doctorId: string, availabilityDto: DoctorAvailabilityDto): Promise<any> {
+  async updateDoctorAvailability(
+    doctorId: string,
+    availabilityDto: DoctorAvailabilityDto,
+  ): Promise<any> {
     const doctor = await this.doctorRepository.findOne({
       where: { user: { id: doctorId } },
       relations: ['user'],
@@ -124,11 +137,11 @@ export class UserService {
       .andWhere('user.isActive = :isActive', { isActive: true })
       .andWhere(
         '(doctor.firstName LIKE :search OR doctor.lastName LIKE :search OR doctor.specialization LIKE :search)',
-        { search: `%${searchTerm}%` }
+        { search: `%${searchTerm}%` },
       )
       .getMany();
 
-    return doctors.map(d => this.mapToUserResponse(d));
+    return doctors.map((d) => this.mapToUserResponse(d));
   }
 
   // 🔹 تفعيل / تعطيل المستخدم
@@ -157,19 +170,33 @@ export class UserService {
 
   // 🔹 إنشاء مستخدم عبر التسجيل (RegisterDto)
   async register(registerDto: RegisterDto): Promise<User> {
-    const { email, password, firstName, lastName, role, phoneNumber } = registerDto;
+    const { email, password, firstName, lastName, role, phoneNumber } =
+      registerDto;
 
-    const existingUser = await this.userRepository.findOne({ where: { email } });
-    if (existingUser) throw new ConflictException('User with this email already exists');
+    const existingUser = await this.userRepository.findOne({
+      where: { email },
+    });
+    if (existingUser)
+      throw new ConflictException('User with this email already exists');
 
     const user = this.userRepository.create({ email, password, role });
     await this.userRepository.save(user);
 
     if (role === UserRole.PATIENT) {
-      const patient = this.patientRepository.create({ firstName, lastName, phoneNumber, user });
+      const patient = this.patientRepository.create({
+        firstName,
+        lastName,
+        phoneNumber,
+        user,
+      });
       await this.patientRepository.save(patient);
     } else if (role === UserRole.DOCTOR) {
-      const doctor = this.doctorRepository.create({ firstName, lastName, phoneNumber, user });
+      const doctor = this.doctorRepository.create({
+        firstName,
+        lastName,
+        phoneNumber,
+        user,
+      });
       await this.doctorRepository.save(doctor);
     }
 
@@ -190,7 +217,10 @@ export class UserService {
     });
   }
 
-  async updateRefreshToken(userId: string, refreshToken: string | null): Promise<void> {
+  async updateRefreshToken(
+    userId: string,
+    refreshToken: string | null,
+  ): Promise<void> {
     // Simple implementation - you can store refresh tokens in a separate table if needed
     await this.userRepository.update(userId, {
       // Add refreshToken field to User entity if you want to store it
@@ -207,8 +237,10 @@ export class UserService {
       createdAt: user.createdAt,
     };
 
-    if (user.role === UserRole.PATIENT && user.patient) response.patient = { ...user.patient };
-    if (user.role === UserRole.DOCTOR && user.doctor) response.doctor = { ...user.doctor };
+    if (user.role === UserRole.PATIENT && user.patient)
+      response.patient = { ...user.patient };
+    if (user.role === UserRole.DOCTOR && user.doctor)
+      response.doctor = { ...user.doctor };
 
     return response;
   }
